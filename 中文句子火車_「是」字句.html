@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>中文句子火車 - 小一非華語生專用</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@600;800;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .train-head {
+      background: #ef4444;
+      border: 4px solid #b91c1c;
+      box-shadow: 0 8px 0 #991b1b;
+    }
+    .train-wagon {
+      background: #fef08a;
+      border: 4px solid #eab308;
+      box-shadow: 0 6px 0 #ca8a04;
+      min-width: 110px;
+      min-height: 90px;
+      transition: all 0.2s ease;
+    }
+    .word-card {
+      background: #ffffff;
+      border: 4px solid #3b82f6;
+      box-shadow: 0 6px 0 #1d4ed8;
+      transition: transform 0.1s, box-shadow 0.1s;
+      cursor: pointer;
+    }
+    .word-card:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 #1d4ed8;
+    }
+    /* 火車由右向左駛出動畫 */
+    @keyframes driveLeft {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-120vw); }
+    }
+    .animate-drive-left {
+      animation: driveLeft 1.5s ease-in forwards;
+    }
+  </style>
+</head>
+<body class="w-screen h-screen flex flex-col justify-between p-4 overflow-hidden">
+
+  <!-- 頂部頁首與資訊欄 -->
+  <header class="text-center py-2 flex justify-between items-center max-w-5xl mx-auto w-full">
+    <h1 class="text-2xl md:text-3xl font-black text-blue-900 tracking-wider">
+      🚂 中文句子火車（「是」字句） 🧩
+    </h1>
+    <div class="flex gap-3 items-center">
+      <div id="progress-text" class="text-lg md:text-xl font-bold bg-white/80 px-4 py-1 rounded-full border-2 border-blue-400 text-blue-800">
+        第 1 / 10 題
+      </div>
+      <div id="score-text" class="text-lg md:text-xl font-black bg-amber-300 px-4 py-1 rounded-full border-2 border-amber-500 text-amber-900 shadow">
+        ⭐ 得分: 0
+      </div>
+    </div>
+  </header>
+
+  <!-- 火車軌道與組裝區 -->
+  <main class="flex-1 flex flex-col justify-center items-center relative">
+    <div id="train-track" class="w-full max-w-5xl flex items-end justify-start gap-2 p-4 relative z-10 transition-transform">
+      <!-- 火車頭 (朝左 🚂) -->
+      <div class="train-head w-28 h-28 rounded-2xl flex flex-col items-center justify-center text-white font-black text-xl relative shrink-0">
+        <span class="text-4xl scale-x-[-1]">🚂</span>
+        <span>火車頭</span>
+        <div class="absolute -bottom-3 left-2 w-7 h-7 bg-slate-800 rounded-full border-2 border-white"></div>
+        <div class="absolute -bottom-3 right-2 w-7 h-7 bg-slate-800 rounded-full border-2 border-white"></div>
+      </div>
+
+      <!-- 車廂掛載區（向右延伸） -->
+      <div id="wagon-container" class="flex items-center gap-3 overflow-x-auto py-2 px-1">
+        <!-- 動態掛載詞語車廂 -->
+      </div>
+    </div>
+
+    <!-- 鐵軌 -->
+    <div class="w-full max-w-5xl h-4 bg-amber-800 rounded-full border-t-4 border-amber-950 flex justify-between px-4 -mt-2">
+      <div class="w-full h-full border-b-4 border-dashed border-amber-200"></div>
+    </div>
+  </main>
+
+  <!-- 詞語選擇與控制區 -->
+  <footer class="w-full max-w-4xl mx-auto space-y-4 mb-4">
+    <!-- 可選詞語庫 -->
+    <div id="word-bank" class="flex flex-wrap justify-center gap-4 p-5 bg-white/80 backdrop-blur-md rounded-2xl border-4 border-blue-300 min-h-[120px] items-center">
+      <!-- 詞語按鈕動態生成 -->
+    </div>
+
+    <!-- 按鈕控制與嘗試次數提示 -->
+    <div class="flex flex-col items-center gap-2">
+      <div id="attempts-text" class="text-base font-bold text-red-600 bg-white/90 px-3 py-1 rounded-full border border-red-300">
+        剩餘嘗試次數：3 次
+      </div>
+      <div class="flex justify-center gap-6">
+        <button onclick="resetCurrentSentence()" class="px-6 py-3 bg-red-500 hover:bg-red-600 text-white font-black text-xl rounded-2xl shadow-[0_5px_0_#991b1b] active:translate-y-1 active:shadow-none">
+          🔄 重來
+        </button>
+        <button onclick="checkSentence()" class="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-black text-2xl rounded-2xl shadow-[0_5px_0_#166534] active:translate-y-1 active:shadow-none">
+          ✅ 發動火車！
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- 單題結果提示彈窗 -->
+  <div id="msg-modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+    <div class="bg-white rounded-3xl p-8 text-center max-w-md border-4 border-amber-400 space-y-4 shadow-2xl">
+      <div id="msg-emoji" class="text-7xl">🎉</div>
+      <div id="msg-text" class="text-2xl font-black text-slate-800">好叻！答對了！</div>
+      
+      <!-- 顯示正確答案解析區 (3次嘗試失敗時顯示) -->
+      <div id="correct-answer-box" class="hidden bg-blue-50 border-2 border-blue-300 rounded-2xl p-4 my-2">
+        <p class="text-sm font-bold text-blue-600 mb-1">正確答案是：</p>
+        <p id="correct-sentence-display" class="text-2xl font-black text-blue-900"></p>
+      </div>
+
+      <button id="modal-btn" onclick="closeModal()" class="px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white font-black text-2xl rounded-2xl">下一題 ➡️</button>
+    </div>
+  </div>
+
+  <!-- 遊戲完結結算畫面彈窗 -->
+  <div id="finish-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+    <div class="bg-white rounded-3xl p-8 text-center max-w-md border-4 border-yellow-400 space-y-5 shadow-2xl">
+      <div class="text-7xl animate-bounce">🏆</div>
+      <h2 class="text-3xl font-black text-blue-900">遊戲完成！</h2>
+      
+      <div class="bg-amber-100 rounded-2xl p-4 border-2 border-amber-300">
+        <p class="text-xl font-bold text-slate-700">你的最終得分：</p>
+        <p id="final-score" class="text-5xl font-black text-red-600 my-2">100 分</p>
+        <div id="star-rating" class="text-3xl">⭐⭐⭐⭐⭐</div>
+      </div>
+
+      <p class="text-lg font-bold text-green-700">太厲害了！你是句子小達人！👏</p>
+
+      <button onclick="restartGame()" class="w-full py-4 bg-green-500 hover:bg-green-600 text-white font-black text-2xl rounded-2xl shadow-[0_5px_0_#166534] active:translate-y-1 active:shadow-none">
+        🔄 再玩一次
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // 專為小一非華語生（NCS）設計的 10 題「⋯⋯是⋯⋯」題目
+    const questions = [
+      { id: 1, correct: ["我", "是", "學生", "。"], words: ["學生", "是", "我", "。"] },
+      { id: 2, correct: ["這", "是", "書包", "。"], words: ["書包", "這", "是", "。"] },
+      { id: 3, correct: ["這", "是", "鉛筆", "。"], words: ["鉛筆", "是", "這", "。"] },
+      { id: 4, correct: ["這兒", "是", "學校", "。"], words: ["學校", "這兒", "是", "。"] },
+      { id: 5, correct: ["這", "是", "小貓", "。"], words: ["小貓", "這", "是", "。"] },
+      { id: 6, correct: ["牠", "是", "小狗", "。"], words: ["小狗", "是", "牠", "。"] },
+      { id: 7, correct: ["他", "是", "我的", "爸爸", "。"], words: ["爸爸", "他", "我的", "是", "。"] },
+      { id: 8, correct: ["她", "是", "我的", "媽媽", "。"], words: ["媽媽", "是", "我的", "她", "。"] },
+      { id: 9, correct: ["蘋果", "是", "紅色的", "。"], words: ["紅色的", "蘋果", "是", "。"] },
+      { id: 10, correct: ["香蕉", "是", "黃色的", "。"], words: ["黃色的", "香蕉", "是", "。"] }
+    ];
+
+    let currentQIdx = 0;
+    let currentSelected = [];
+    let score = 0;
+    let attemptsLeft = 3;         // 每題剩餘嘗試次數（最多 3 次）
+    let wrongDeductionCount = 0;  // 單題已扣分次數（最多扣 2 次 = 10 分）
+    let isQuestionFinished = false; // 標記本題是否結束（答對或試滿3次）
+
+    let selectedFemaleVoice = null;
+
+    // 載入語音並優先搜尋 Man-Chi (Female)
+    function loadVoices() {
+      if (!('speechSynthesis' in window)) return;
+      const voices = window.speechSynthesis.getVoices();
+      
+      // 1. 優先匹配 Man-Chi 廣東話語音
+      selectedFemaleVoice = voices.find(v => 
+        (v.lang === 'zh-HK' || v.lang.includes('HK')) &&
+        (v.name.includes('Man-Chi') || v.name.includes('ManChi'))
+      );
+
+      // 2. 次要備用：其他粵語女性語音 (Sin-Ji, HiuMaan, Tracy 等)
+      if (!selectedFemaleVoice) {
+        selectedFemaleVoice = voices.find(v => 
+          (v.lang === 'zh-HK' || v.lang.includes('HK')) &&
+          (v.name.includes('Sin-Ji') || v.name.includes('HiuMaan') || v.name.includes('Tracy') || v.name.toLowerCase().includes('female'))
+        );
+      }
+
+      // 3. 保底：任何 zh-HK 廣東話語音
+      if (!selectedFemaleVoice) {
+        selectedFemaleVoice = voices.find(v => v.lang === 'zh-HK' || v.lang.includes('HK'));
+      }
+    }
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+      loadVoices();
+    }
+
+    // 初始化題目
+    function initQuestion() {
+      const q = questions[currentQIdx];
+      currentSelected = [];
+      attemptsLeft = 3;
+      wrongDeductionCount = 0;
+      isQuestionFinished = false;
+
+      // 更新介面
+      document.getElementById('progress-text').innerText = `第 ${currentQIdx + 1} / ${questions.length} 題`;
+      document.getElementById('score-text').innerText = `⭐ 得分: ${score}`;
+      updateAttemptsUI();
+
+      // 渲染詞語庫
+      const wordBank = document.getElementById('word-bank');
+      wordBank.innerHTML = '';
+      q.words.forEach(word => {
+        const btn = document.createElement('button');
+        btn.className = 'word-card px-6 py-4 rounded-2xl text-2xl font-black text-slate-800';
+        btn.innerText = word;
+        btn.onclick = () => selectWord(word, btn);
+        wordBank.appendChild(btn);
+      });
+
+      renderWagons();
+    }
+
+    function updateAttemptsUI() {
+      document.getElementById('attempts-text').innerText = `剩餘嘗試次數：${attemptsLeft} 次`;
+    }
+
+    // 點擊詞語並掛載至車廂
+    function selectWord(word, btnElem) {
+      speak(word);
+      currentSelected.push(word);
+      btnElem.classList.add('opacity-20', 'pointer-events-none');
+      renderWagons();
+    }
+
+    // 渲染車廂
+    function renderWagons() {
+      const container = document.getElementById('wagon-container');
+      container.innerHTML = '';
+
+      currentSelected.forEach((word, idx) => {
+        const wagon = document.createElement('div');
+        wagon.className = 'train-wagon rounded-2xl flex flex-col items-center justify-center p-3 relative text-2xl font-black text-amber-950';
+        wagon.innerText = word;
+
+        // 車廂右上角移除按鈕
+        const delBtn = document.createElement('span');
+        delBtn.className = 'absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 text-sm flex items-center justify-center cursor-pointer shadow';
+        delBtn.innerText = '✕';
+        delBtn.onclick = (e) => {
+          e.stopPropagation();
+          removeWord(idx);
+        };
+
+        // 車廂輪子
+        const w1 = document.createElement('div');
+        w1.className = 'absolute -bottom-2 left-2 w-5 h-5 bg-slate-800 rounded-full border-2 border-white';
+        const w2 = document.createElement('div');
+        w2.className = 'absolute -bottom-2 right-2 w-5 h-5 bg-slate-800 rounded-full border-2 border-white';
+
+        wagon.appendChild(delBtn);
+        wagon.appendChild(w1);
+        wagon.appendChild(w2);
+        container.appendChild(wagon);
+      });
+    }
+
+    // 移除車廂上的詞語
+    function removeWord(idx) {
+      const removedWord = currentSelected.splice(idx, 1)[0];
+
+      // 恢復詞語庫按鈕狀態
+      const buttons = document.querySelectorAll('#word-bank button');
+      buttons.forEach(btn => {
+        if (btn.innerText === removedWord && btn.classList.contains('opacity-20')) {
+          btn.classList.remove('opacity-20', 'pointer-events-none');
+        }
+      });
+
+      renderWagons();
+    }
+
+    // 重設本題
+    function resetCurrentSentence() {
+      // 僅清空當前選取的詞語，保留扣分與剩餘次數狀態
+      currentSelected = [];
+      const buttons = document.querySelectorAll('#word-bank button');
+      buttons.forEach(btn => btn.classList.remove('opacity-20', 'pointer-events-none'));
+      renderWagons();
+    }
+
+    // 檢查答案
+    function checkSentence() {
+      if (isQuestionFinished) return; // 本題已結束則不再處理
+
+      const q = questions[currentQIdx];
+      const isCorrect = JSON.stringify(currentSelected) === JSON.stringify(q.correct);
+
+      if (isCorrect) {
+        // 答對邏輯
+        isQuestionFinished = true;
+        score += 10;
+        document.getElementById('score-text').innerText = `⭐ 得分: ${score}`;
+        
+        const fullSentence = currentSelected.join('');
+        speak(`好叻！${fullSentence}`);
+
+        // 火車向左開走動畫
+        const trainTrack = document.getElementById('train-track');
+        trainTrack.classList.add('animate-drive-left');
+
+        setTimeout(() => {
+          showModal('🎉', '答對了！', false, '', '下一題 ➡️');
+          trainTrack.classList.remove('animate-drive-left');
+        }, 1200);
+
+      } else {
+        // 答錯邏輯
+        attemptsLeft--;
+
+        // 扣分邏輯：每次扣 5 分，單題最多扣 2 次（上限 10 分）
+        if (wrongDeductionCount < 2) {
+          score = Math.max(0, score - 5);
+          wrongDeductionCount++;
+          document.getElementById('score-text').innerText = `⭐ 得分: ${score}`;
+        }
+
+        updateAttemptsUI();
+
+        if (attemptsLeft > 0) {
+          // 還有機會（第 1、2 次答錯）
+          speak('再試一次呀！');
+          showModal('❌', `還剩 ${attemptsLeft} 次機會。`, false, '', '再試一次 🔄');
+        } else {
+          // 3 次嘗試皆失敗
+          isQuestionFinished = true;
+          const fullCorrectSentence = q.correct.join('');
+          
+          showModal('💡', '答案：', true, fullCorrectSentence, '下一題 ➡️');
+          speak(`${fullCorrectSentence}`);
+        }
+      }
+    }
+
+    // 語音發音（廣東話朗讀，修正「爸爸」與「媽媽」音調）
+    function speak(text) {
+      if ('speechSynthesis' in window) {
+        const synth = window.speechSynthesis;
+        synth.cancel(); // 停止先前的發音
+
+        let spokenText = text.replace(/爸爸/g, '巴巴').replace(/媽媽/g, '嗎嗎');
+        const utter = new SpeechSynthesisUtterance(spokenText);
+        utter.lang = 'Man-Chi(female)';
+
+        if (selectedFemaleVoice) {
+          utter.voice = selectedFemaleVoice;
+        }
+
+        synth.speak(utter);
+      }
+    }
+
+    // 彈窗顯示
+    function showModal(emoji, text, showCorrectBox = false, correctSentence = '', btnText = '下一題 ➡️') {
+      document.getElementById('msg-emoji').innerText = emoji;
+      document.getElementById('msg-text').innerText = text;
+      document.getElementById('modal-btn').innerText = btnText;
+
+      const answerBox = document.getElementById('correct-answer-box');
+      if (showCorrectBox) {
+        document.getElementById('correct-sentence-display').innerText = correctSentence;
+        answerBox.classList.remove('hidden');
+      } else {
+        answerBox.classList.add('hidden');
+      }
+
+      document.getElementById('msg-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('msg-modal').classList.add('hidden');
+
+      // 只有當本題已結束（答對 或 試滿 3 次）時，才推進到下一題
+      if (isQuestionFinished) {
+        if (currentQIdx < questions.length - 1) {
+          currentQIdx++;
+          initQuestion();
+        } else {
+          showFinishModal();
+        }
+      }
+    }
+
+    // 顯示遊戲完結結算畫面
+    function showFinishModal() {
+      document.getElementById('final-score').innerText = `${score} 分`;
+      
+      // 星星評級
+      let stars = '⭐⭐⭐⭐⭐';
+      if (score < 50) stars = '⭐⭐';
+      else if (score < 70) stars = '⭐⭐⭐';
+      else if (score < 100) stars = '⭐⭐⭐⭐';
+
+      document.getElementById('star-rating').innerText = stars;
+      document.getElementById('finish-modal').classList.remove('hidden');
+      speak('恭喜你，完成所有題目了！');
+    }
+
+    // 重新開始遊戲
+    function restartGame() {
+      currentQIdx = 0;
+      score = 0;
+      document.getElementById('finish-modal').classList.add('hidden');
+      initQuestion();
+    }
+
+    // 頁面載入後初始化
+    window.onload = () => {
+      loadVoices();
+      initQuestion();
+    };
+  </script>
+</body>
+</html>
